@@ -1,7 +1,6 @@
-//export MONGO_URL='mongodb://diego:ismism@oceanic.mongohq.com:10028/';
+//Also included the functions that parses and inserts vcf in Collections
  ParsedVCFs = new Meteor.Collection("vcfs");
  HeadVCFs = new Meteor.Collection("head");
-
  
  VCFparse=function(x){
 	console.log('(parsing a '+x.length+' long string)');
@@ -42,7 +41,12 @@
 	for (var xx in y.head){console.log(y.head[xx])};
 	console.log('end of function parse');
 	console.log('inserting y.head.FORMAT on HeadVCFs Collection')
-	HeadVCFs.insert(y.head.FORMAT)
+	
+	for (var xx in y.head.FORMAT){
+		
+        HeadVCFs.insert(y.head.FORMAT[xx]);
+    };
+	
 	return y;
 	
 	
@@ -78,61 +82,3 @@ VCFparseHead=function(dt){ // go through a data file and parses data.head
 	// return dt <-- no need, dt was passed by reference
 	
 };
-
-
- 
-if (Meteor.isClient) {
-	
-  Template.hello.greeting = function () {
-    return "Welcome to vcfMeteor.";
-  };
-
-  Template.hello.events({
-    'click input': function () {
-      // template data, if any, is available in 'this'
-      if (typeof console !== 'undefined')
-        console.log("You pressed the button");
-    }
-    
-  });
-  
-    Template.hello.events({
-    'change input': function (event) {
-      // template data, if any, is available in 'this'
-   
-   var input = event.target;
-	var reader = new FileReader();
-	reader.onload = function(event){
-	var reader = event.target;
-	
-	var vcfTxt = reader.result;
-	//calling VCFparse();
-	console.log('triggered change input');
-		console.log(VCFparse(vcfTxt));
-		//from there, the object y may be accessible
-	console.log(reader.result.substring(0, 100));
-		};
-	
-	
-	reader.readAsText(input.files[0]);
-	
-	
-        
-    }
-    });
-    
-    
-  
-  
-  
-  
-  
-  
- // var openFile = function(event) {console.log('evento criado')}
-}
-
-if (Meteor.isServer) {
-  Meteor.startup(function () {
-    // code to run on server at startup
-  });
-}
