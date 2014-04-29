@@ -1,13 +1,14 @@
 //Also included the functions that parses and inserts vcf in Collections
- ParsedVCFs = new Meteor.Collection("vcfs");
- HeadVCFs = new Meteor.Collection("head");
+ Body = new Meteor.Collection("body");
+ Head = new Meteor.Collection("head");
+ HeadDetails = new Meteor.Collection("headDetails");
  
  VCFparse=function(x){
 	console.log('(parsing a '+x.length+' long string)');
-	x=x.split(/\n/);
+	x=x.split(/\n/);// transforms into a array finding new line caracter
 	var n=x.length; // number of lines in the file
 	if(x[n-1].length==0){n=n-1}; // remove trailing blank
-	y={head:{},body:{}};
+	y={head:{},body:{}};//create y object. It will be the parsed VCF
 	// parse ## head lines
 	var i=0; // ith line
 	var L = x[i].match(/^##(.*)/); // L is the line being parsed
@@ -18,34 +19,67 @@
 	while(L.length>1){
 		i++;
 		L = L[1].match(/([^=]+)\=(.*)/);
-		if(!y.head[L[1]]){y.head[L[1]]=[]}
+		if(!y.head[L[1]]){
+			y.head[L[1]]=[];
+			}
 		y.head[L[1]].push(L[2]);
 		L = x[i].match(/^##(.*)/);
 		if(L==null){L=[]}; // break	
 	}
+	
 	// parse # body lines
-	L=x[i].match(/^#([^#].*)/)[1]; // use fuirst line to define fields
-	var F = L.split(/\t/); // fields
+	L=x[i].match(/^#([^#].*)/)[1]; // use first line to define fields
+	
+	var F = L.split(/\t/);
+	
+	//trying to create docs with # of line
+	/*
 	for(var j=0;j<F.length;j++){
 		y.body[F[j]]=[];
 	}
+	*/
 	var i0=i+1;
-	for(var i=i0;i<n;i++){
-		L = x[i].split(/\t/);
-		for(var j=0;j<F.length;j++){
-			y.body[F[j]][i-i0]=L[j];
-		}	
-	}
-	y.fields=F;
-	VCFparseHead(y); // parse head further
-	for (var xx in y.head){console.log(y.head[xx])};
-	console.log('end of function parse');
-	console.log('inserting y.head.FORMAT on HeadVCFs Collection')
 	
-	for (var xx in y.head.FORMAT){
+	for(var i=i0;i<n;i++){ //go ahead from the first line of data on body to the end of vcf
 		
-        HeadVCFs.insert(y.head.FORMAT[xx]);
+		L = x[i].split(/\t/);
+		y.body[i-i0]={};
+		y.body[i-i0]['line']=i-i0;
+		for(var j=0;j<F.length;j++){
+			y.body[i-i0][F[j]]=L[j];
+		}
+			var xx = {};
+			xx=y.body[i-i0];
+			
+			Body.insert(xx);
+			
+	}
+	y.fields=F;//this line will be deleted
+	
+	
+	VCFparseHead(y); // parse head further
+		
+	//var headLines = Object.getOwnPropertyNames(y.head);
+	for (var i in y['head']){
+	
+			
+		if (y['head'][i] === Object(y['head'][i])){
+		Head.insert({'title':i});	
+			for (var j in y['head'][i]){
+		
+        //Head.insert({'title':i, 'ID':j});
+		
+		var xx = {};
+		xx = y['head'][i][j];
+		xx.ID = j;
+		xx.title = i;
+		
+		HeadDetails.insert(xx);
+		//, 'details':y['head'][i]});
+			};
+		};
     };
+	//insert data on HeadDetails collection
 	
 	return y;
 	
@@ -69,8 +103,33 @@ VCFparseHead=function(dt){ // go through a data file and parses data.head
 			for(j=0;j<dt.head[f].length;j++){
 				str=dt.head[f][j];
 				ID=str.match(/ID=([^\,\>]+)/)[1];
+				/* http://www.myezapp.com/apps/dev/regexp/show.ws
+				Sequence: match all of the followings in order
+					/ I D =
+					CapturingGroup
+					GroupNumber:1	
+					Repeat
+					AnyCharNotIn[ , >]
+					one or more times
+					/
+				*/
 				v[ID]={};
 				AV = str.match(/([^\,\<]+=[^\,\>]+)/g);
+				/*
+				Sequence: match all of the followings in order
+					/
+					CapturingGroup
+					GroupNumber:1
+					Sequence: match all of the followings in order
+					Repeat
+					AnyCharNotIn[ , <]
+					one or more times
+					=
+					Repeat
+					AnyCharNotIn[ , >]
+					one or more times
+/ g
+				*/
 				for(k=1;k<AV.length;k++){ // k=0 is if ID's AV
 					AVk=AV[k].match(/[^=\"]+/g);
 					v[ID][AVk[0]]=AVk[1];
